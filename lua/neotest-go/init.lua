@@ -1,7 +1,7 @@
 local async = require('neotest.async')
 local Path = require('plenary.path')
 local lib = require('neotest.lib')
-
+local logger = require('neotest.logging')
 local api = vim.api
 local fn = vim.fn
 local fmt = string.format
@@ -84,7 +84,7 @@ end
 
 local function get_experimental_opts()
   return {
-    test_table = false
+    test_table = false,
   }
 end
 
@@ -105,7 +105,7 @@ local function marshal_gotest_output(lines, output_file)
     if line ~= '' then
       local ok, parsed = pcall(vim.json.decode, line, { luanil = { object = true } })
       if not ok then
-        log = vim.tbl_map(function (l)
+        log = vim.tbl_map(function(l)
           return highlight_output(l)
         end, lines)
         return tests, log
@@ -194,7 +194,8 @@ function adapter.discover_positions(path)
   ]]
 
   if get_experimental_opts().test_table then
-    query = query .. [[
+    query = query
+      .. [[
 
     (block
       (short_var_declaration
@@ -291,15 +292,20 @@ function adapter.build_spec(args)
 end
 
 ---@async
----@param _ neotest.RunSpec
+---@param spec neotest.RunSpec
 ---@param result neotest.StrategyResult
 ---@param tree neotest.Tree
 ---@return table<string, neotest.Result[]>
-function adapter.results(_, result, tree)
+function adapter.results(spec, result, tree)
+  logger.debug('neotest-go.results() called with spec: ' .. spec)
+  logger.debug('                            with result: ' .. result)
+  logger.debug('                            with tree: ' .. tree)
+
   local success, data = pcall(lib.files.read, result.output)
   if not success then
     return {}
   end
+  logger.debug('neotest-go output file read: ' .. data)
   local lines = vim.split(data, '\r\n')
   local tests, log = marshal_gotest_output(lines, result.output)
   local results = {}
