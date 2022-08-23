@@ -297,15 +297,16 @@ end
 ---@param tree neotest.Tree
 ---@return table<string, neotest.Result[]>
 function adapter.results(spec, result, tree)
-  logger.debug('neotest-go.results() called with spec: ' .. spec)
-  logger.debug('                            with result: ' .. result)
-  logger.debug('                            with tree: ' .. tree)
+  print('entering results')
+  logger.debug('neotest-go.results() called with spec: ' .. vim.inspect(spec))
+  logger.debug('                            with result: ' .. vim.inspect(result))
+  logger.debug('                            with tree: ' .. vim.inspect(tree))
 
   local success, data = pcall(lib.files.read, result.output)
   if not success then
     return {}
   end
-  logger.debug('neotest-go output file read: ' .. data)
+  logger.debug('neotest-go output file read: ' .. vim.inspect(data))
   local lines = vim.split(data, '\r\n')
   local tests, log = marshal_gotest_output(lines, result.output)
   local results = {}
