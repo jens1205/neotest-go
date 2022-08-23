@@ -327,6 +327,14 @@ function adapter.results(spec, result, tree)
       local id_parts = vim.split(value.id, '::')
       table.remove(id_parts, 1)
       local test_output = tests[table.concat(id_parts, '/')]
+      logger.debug(
+        'test result (test_output) of value.id '
+          .. value.id
+          .. ' / test '
+          .. table.concat(id_parts, '/')
+          .. ': '
+          .. vim.inspect(test_output)
+      )
       if test_output then
         local fname = async.fn.tempname()
         fn.writefile(test_output.output, fname)
