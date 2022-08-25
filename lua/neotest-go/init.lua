@@ -82,6 +82,19 @@ local function get_go_package_name(_)
   return vim.startswith('package', line) and vim.split(line, ' ')[2] or ''
 end
 
+local function get_go_module_name(start_file)
+  local gomod_file = lib.files.match_root_pattern('go.mod')(start_file) .. '/go.mod'
+  logger.debug('go.mod-file: ' .. gomod_file)
+  local gomod_success, gomodule = pcall(lib.files.read_lines, gomod_file)
+  if not gomod_success then
+    logger.error("couldn't read go.mod file: " .. gomodule)
+    return
+  end
+  local line = gomodule[1]
+  local module = string.match(line, 'module (.+)')
+  return module
+end
+
 local function get_experimental_opts()
   return {
     test_table = false,
@@ -333,23 +346,19 @@ function adapter.results(spec, result, tree)
   logger.debug('                            with result: ' .. vim.inspect(result))
   logger.debug('                            with tree: ' .. vim.inspect(tree))
 
-  local gomod_file = lib.files.match_root_pattern('go.mod')(spec.context.file) .. '/go.mod'
-  logger.debug('go.mod-file: ' .. gomod_file)
-  local gomod_success, gomodule = pcall(lib.files.read_lines, gomod_file)
-  if not gomod_success then
-    logger.error("couldn't read go.mod file: " .. gomodule)
+  local go_module = get_go_module_name(spec.context.file)
+  if not go_module then
     return {}
   end
 
-  logger.debug('go-mod: ' .. vim.inspect(gomodule))
-
-  local success, data = pcall(lib.files.read, result.output)
+  local success, lines = pcall(lib.files.read_lines, result.output)
   if not success then
     return {}
   end
-  logger.debug('neotest-go output file read: ' .. vim.inspect(data))
-  local lines = vim.split(data, '\r\n')
+  -- logger.debug('neotest-go output file read: ' .. vim.inspect(data))
+  -- local lines = vim.split(data, '\r\n')
   local tests, log = marshal_gotest_output(lines)
+  logger.debug('marshalled gotest output: ' .. tests)
   local results = {}
   local no_results = vim.tbl_isempty(tests)
   local empty_result_fname
