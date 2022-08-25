@@ -333,7 +333,7 @@ function adapter.results(spec, result, tree)
   logger.debug('                            with result: ' .. vim.inspect(result))
   logger.debug('                            with tree: ' .. vim.inspect(tree))
 
-  local gomod_file = lib.files.match_root_pattern('go.mod')(spec.context.file)
+  local gomod_file = lib.files.match_root_pattern('go.mod')(spec.context.file) .. '/go.mod'
   logger.debug('go.mod-file: ' .. gomod_file)
   local gomod_success, gomodule = pcall(lib.files.read_lines, gomod_file)
   if not gomod_success then
