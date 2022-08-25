@@ -92,16 +92,35 @@ local get_args = function()
   return {}
 end
 
+--- Converts from a given go package and the "/" seperated testname to a
+--- format "package::test::subtest".
+--- The function returns the test in this format as well as the testname of the parent test (if present)
+---@param package string
+---@param test string
+---@return string, string?
+local function generate_testname(package, test)
+  -- sub-tests are structured as 'TestMainTest/subtest_clause'
+  local parts = vim.split(test, '/')
+  local is_subtest = #parts > 1
+  local parenttest = is_subtest and (package .. '::' .. parts[1]) or nil
+  return package .. '::' .. table.concat(parts, '::'), parenttest
+end
+
+local function get_testfile(line)
+  local file, linenumber = string.match(line, '%s%s%s%s(.*_test.go):(%d+):')
+  return file, linenumber
+end
+
 ---Convert the json output from `gotest` to an intermediate format more similar to
 ---neogit.Result. Collect the progress of each test into a subtable and add a field for
 ---the final result
 ---@param lines string[]
----@param output_file string
 ---@return table, table
-local function marshal_gotest_output(lines, output_file)
+local function marshal_gotest_output(lines)
   local tests = {}
   local log = {}
   for _, line in ipairs(lines) do
+    local testfile, linenumber
     if line ~= '' then
       local ok, parsed = pcall(vim.json.decode, line, { luanil = { object = true } })
       if not ok then
@@ -114,28 +133,41 @@ local function marshal_gotest_output(lines, output_file)
       if output then
         table.insert(log, output)
       end
-      local action, name = parsed.Action, parsed.Test
-      if name then
+      local action, package, test = parsed.Action, parsed.Package, parsed.Test
+      if test then
         local status = test_statuses[action]
-        -- sub-tests are structured as 'TestMainTest/subtest_clause'
-        local parts = vim.split(name, '/')
-        local is_subtest = #parts > 1
-        local parent = is_subtest and parts[1] or nil
-        if not tests[name] then
-          tests[name] = {
+
+        local testname, parenttestname = generate_testname(package, test)
+        if not tests[testname] then
+          tests[testname] = {
             output = {},
             progress = {},
-            output_file = output_file,
+            file_output = {},
           }
         end
-        table.insert(tests[name].progress, action)
+        local new_testfile, new_linenumber = get_testfile(parsed.Output)
+        if new_testfile then
+          testfile = new_testfile
+          linenumber = new_linenumber
+        end
+        if testfile then
+          if not tests[testname].file_output[testfile] then
+            tests[testname].file_output[testfile] = {}
+          end
+          if not tests[testname].file_output[testfile][linenumber] then
+            tests[testname].file_output[testfile][linenumber] = {}
+          end
+          table.insert(tests[testname].file_output[testfile][linenumber], output)
+        end
+
+        table.insert(tests[test].progress, action)
         if status then
-          tests[name].status = status
+          tests[test].status = status
         end
         if output then
-          table.insert(tests[name].output, output)
-          if parent then
-            table.insert(tests[parent].output, output)
+          table.insert(tests[test].output, output)
+          if parenttestname then
+            table.insert(tests[parenttestname].output, output)
           end
         end
       end
@@ -297,10 +329,12 @@ end
 ---@param tree neotest.Tree
 ---@return table<string, neotest.Result[]>
 function adapter.results(spec, result, tree)
-  print('entering results')
   logger.debug('neotest-go.results() called with spec: ' .. vim.inspect(spec))
   logger.debug('                            with result: ' .. vim.inspect(result))
   logger.debug('                            with tree: ' .. vim.inspect(tree))
+
+  local gomodule = lib.files.read_lines(lib.files.match_root_pattern('go.mod')(spec.context.file))
+  logger.debug('go-mod: ' .. vim.inspect(gomodule))
 
   local success, data = pcall(lib.files.read, result.output)
   if not success then
@@ -308,7 +342,7 @@ function adapter.results(spec, result, tree)
   end
   logger.debug('neotest-go output file read: ' .. vim.inspect(data))
   local lines = vim.split(data, '\r\n')
-  local tests, log = marshal_gotest_output(lines, result.output)
+  local tests, log = marshal_gotest_output(lines)
   local results = {}
   local no_results = vim.tbl_isempty(tests)
   local empty_result_fname
