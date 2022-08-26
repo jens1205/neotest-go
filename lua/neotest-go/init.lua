@@ -206,6 +206,8 @@ local function marshal_gotest_output(lines)
       local output = highlight_output(parsed.Output)
       if output then
         table.insert(log, output)
+      else
+        testfile, linenumber = nil, nil
       end
       local action, package, test = parsed.Action, parsed.Package, parsed.Test
       if test then
