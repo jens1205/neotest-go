@@ -181,7 +181,7 @@ local function marshal_gotest_output(lines)
           }
         end
         local new_testfile, new_linenumber = get_testfileinfo(parsed.Output)
-        if new_testfile then
+        if new_testfile and new_linenumber then
           testfile = new_testfile
           linenumber = new_linenumber
         end
