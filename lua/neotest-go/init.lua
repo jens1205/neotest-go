@@ -19,6 +19,9 @@ local test_statuses = {
   skip = 'skipped', -- the test was skipped or the package contained no tests
 }
 
+local testfile_pattern = '^%s%s%s%s(.*_test.go):(%d+): '
+local testlog_pattern = '^%s%s%s%s%s%s%s%s'
+
 --- Remove newlines from test output
 ---@param output string?
 ---@return string?
@@ -26,7 +29,7 @@ local function sanitize_output(output)
   if not output then
     return nil
   end
-  output = output:gsub('\n', ''):gsub('\t', ''):gsub('%s+', ' ')
+  output = output:gsub(testfile_pattern, ''):gsub(testlog_pattern, ''):gsub('\n', ''):gsub('\t', '')
   return output
 end
 
@@ -140,7 +143,6 @@ local function get_filename_from_id(id)
   return filename
 end
 
-local testfile_pattern = '%s%s%s%s(.*_test.go):(%d+):'
 --- Extracts testfile and linenumber of go test output in format
 --- "    main_test.go:12: ErrorF\n"
 ---@param line string
@@ -153,23 +155,28 @@ local function get_testfileinfo(line)
   return nil, nil
 end
 
---- Removes testfile and linenumber of go test output in format
---- "    main_test.go:12: ErrorF\n"
----@param line string?
----@return string?
-local function remove_testfileinfo(line)
-  if line then
-    line = string.gsub(line, testfile_pattern .. ' ', '')
-    return line
-  end
-  return nil
-end
+----- Removes testfile and linenumber of go test output in format
+----- "    main_test.go:12: ErrorF\n"
+-----@param line string?
+-----@return string?
+--local function remove_testfileinfo(line)
+--  if line then
+--    line = string.gsub(line, testfile_pattern .. ' ', '')
+--    return line
+--  end
+--  return nil
+--end
 
-local function is_test_seperatorline(line)
-  if line then
-    if string.match(line, '---.*') or string.match(line, '===.*') then
-      return true
-    end
+-- local function is_test_seperatorline(line)
+--   if line and (string.match(line, '---.*') or string.match(line, '===.*')) then
+--     return true
+--   end
+--   return false
+-- end
+
+local function is_test_logoutput(line)
+  if line and string.match(line, '^%s%s%s%s%s%s%s%s') then
+    return true
   end
   return false
 end
@@ -221,24 +228,25 @@ local function marshal_gotest_output(lines)
             file_output = {},
           }
         end
+
+        -- if a new file and linenumber is present in the current line, use this info from now on
+        -- beginn collection log data with everything after the file:linenumber
         local new_testfile, new_linenumber = get_testfileinfo(parsed.Output)
         if new_testfile and new_linenumber then
           testfile = new_testfile
           linenumber = new_linenumber
+          tests[testname].file_output[testfile] = {}
+          tests[testname].file_output[testfile][linenumber] = {
+            sanitize_output(parsed.Output),
+          }
         end
-        if testfile and linenumber then
-          if not tests[testname].file_output[testfile] then
-            tests[testname].file_output[testfile] = {}
-          end
-          if not tests[testname].file_output[testfile][linenumber] then
-            tests[testname].file_output[testfile][linenumber] = {}
-          end
-          if not is_test_seperatorline(parsed.Output) then
-            table.insert(
-              tests[testname].file_output[testfile][linenumber],
-              sanitize_output(remove_testfileinfo(parsed.Output))
-            )
-          end
+
+        -- if we are in the context of a file, collect the logged data
+        if testfile and linenumber and is_test_logoutput(parsed.Output) then
+          table.insert(
+            tests[testname].file_output[testfile][linenumber],
+            sanitize_output(parsed.Output)
+          )
         end
 
         table.insert(tests[testname].progress, action)
