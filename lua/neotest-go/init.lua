@@ -238,7 +238,9 @@ local function marshal_gotest_output(lines)
           logger.debug(
             'marshal_gotest_output: testfile ' .. testfile .. ':' .. linenumber .. ' detected'
           )
-          tests[testname].file_output[testfile] = {}
+          if not tests[testname].file_output[testfile] then
+            tests[testname].file_output[testfile] = {}
+          end
           tests[testname].file_output[testfile][linenumber] = {
             sanitize_output(parsed.Output),
           }
