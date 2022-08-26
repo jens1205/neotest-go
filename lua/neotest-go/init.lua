@@ -146,7 +146,7 @@ end
 local function get_testfileinfo(line)
   if line then
     local file, linenumber = string.match(line, '%s%s%s%s(.*_test.go):(%d+):')
-    return file, linenumber
+    return file, tonumber(linenumber)
   end
   return nil, nil
 end
