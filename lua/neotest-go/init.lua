@@ -21,6 +21,7 @@ local test_statuses = {
 
 local testfile_pattern = '^%s%s%s%s(.*_test.go):(%d+): '
 local testlog_pattern = '^%s%s%s%s%s%s%s%s'
+local error_pattern = { 'error' }
 
 --- Remove newlines from test output
 ---@param output string?
@@ -160,24 +161,17 @@ local function get_testfileinfo(line)
   return nil, nil
 end
 
------ Removes testfile and linenumber of go test output in format
------ "    main_test.go:12: ErrorF\n"
------@param line string?
------@return string?
---local function remove_testfileinfo(line)
---  if line then
---    line = string.gsub(line, testfile_pattern .. ' ', '')
---    return line
---  end
---  return nil
---end
-
--- local function is_test_seperatorline(line)
---   if line and (string.match(line, '---.*') or string.match(line, '===.*')) then
---     return true
---   end
---   return false
--- end
+local function is_error(lines)
+  for _, line in ipairs(lines) do
+    line = string.lower(line)
+    for _, pattern in ipairs(error_pattern) do
+      if string.match(line, string.lower(pattern)) then
+        return true
+      end
+    end
+  end
+  return false
+end
 
 local function is_test_logoutput(line)
   if line and string.match(line, '^%s%s%s%s%s%s%s%s') then
@@ -192,7 +186,9 @@ local function get_errors_from_test(test, file_name)
   end
   local errors = {}
   for line, output in pairs(test.file_output[file_name]) do
-    table.insert(errors, { line = line - 1, message = table.concat(output, '') })
+    if is_error(output) then
+      table.insert(errors, { line = line - 1, message = 'neotest: ' .. table.concat(output, '') })
+    end
   end
   return errors
 end
