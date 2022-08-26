@@ -183,8 +183,8 @@ end
 local function marshal_gotest_output(lines)
   local tests = {}
   local log = {}
+  local testfile, linenumber
   for _, line in ipairs(lines) do
-    local testfile, linenumber
     if line ~= '' then
       local ok, parsed = pcall(vim.json.decode, line, { luanil = { object = true } })
       if not ok then
