@@ -167,7 +167,7 @@ end
 
 local function is_test_seperatorline(line)
   if line then
-    if string.match(line, '^---.*') or string.match(line, '^===.*') then
+    if string.match(line, '---.*') or string.match(line, '===.*') then
       return true
     end
   end
