@@ -165,6 +165,15 @@ local function remove_testfileinfo(line)
   return nil
 end
 
+local function is_test_endline(line)
+  if line then
+    if string.match(line, '^---.*') then
+      return true
+    end
+  end
+  return false
+end
+
 local function get_errors_from_test(test, file_name)
   if not test.file_output[file_name] then
     return nil
@@ -222,10 +231,12 @@ local function marshal_gotest_output(lines)
           if not tests[testname].file_output[testfile][linenumber] then
             tests[testname].file_output[testfile][linenumber] = {}
           end
-          table.insert(
-            tests[testname].file_output[testfile][linenumber],
-            sanitize_output(remove_testfileinfo(parsed.Output))
-          )
+          if not is_test_endline(parsed.Output) then
+            table.insert(
+              tests[testname].file_output[testfile][linenumber],
+              sanitize_output(remove_testfileinfo(parsed.Output))
+            )
+          end
         end
 
         table.insert(tests[testname].progress, action)
