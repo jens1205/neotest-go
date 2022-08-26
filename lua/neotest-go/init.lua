@@ -159,6 +159,7 @@ local function get_errors_from_test(test, file_name)
   for line, output in ipairs(test.file_output[file_name]) do
     table.insert(errors, { line = line, message = table.concat(output, '') })
   end
+  return errors
 end
 
 ---Convert the json output from `gotest` to an intermediate format more similar to
