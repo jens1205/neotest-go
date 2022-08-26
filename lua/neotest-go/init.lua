@@ -383,7 +383,7 @@ function adapter.results(spec, result, tree)
   -- logger.debug('neotest-go output file read: ' .. vim.inspect(data))
   -- local lines = vim.split(data, '\r\n')
   local tests, log = marshal_gotest_output(lines)
-  logger.debug('marshalled gotest output: ' .. tests)
+  logger.debug('marshalled gotest output: ' .. vim.inspect(tests))
   local results = {}
   local no_results = vim.tbl_isempty(tests)
   local empty_result_fname
