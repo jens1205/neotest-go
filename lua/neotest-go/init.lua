@@ -82,8 +82,12 @@ local function get_go_package_name(_)
   return vim.startswith('package', line) and vim.split(line, ' ')[2] or ''
 end
 
-local function get_go_module_name(start_file)
-  local gomod_file = lib.files.match_root_pattern('go.mod')(start_file) .. '/go.mod'
+local function get_go_root(start_file)
+  return lib.files.match_root_pattern('go.mod')(start_file)
+end
+
+local function get_go_module_name(go_root)
+  local gomod_file = go_root .. '/go.mod'
   logger.debug('go.mod-file: ' .. gomod_file)
   local gomod_success, gomodule = pcall(lib.files.read_lines, gomod_file)
   if not gomod_success then
@@ -111,7 +115,7 @@ end
 ---@param package string
 ---@param test string
 ---@return string, string?
-local function generate_testname(package, test)
+local function normalize_testname(package, test)
   -- sub-tests are structured as 'TestMainTest/subtest_clause'
   local parts = vim.split(test, '/')
   local is_subtest = #parts > 1
@@ -119,7 +123,22 @@ local function generate_testname(package, test)
   return package .. '::' .. table.concat(parts, '::'), parenttest
 end
 
-local function get_testfile(line)
+--- Converts from a given neotest id and go_root / go_module to format
+--- "package::test::subtest"
+---@param id string
+---@param go_root string
+---@param go_module string
+---@return string
+local function normalize_id(id, go_root, go_module)
+  local normalized_id, _ = id:gsub(go_root, go_module):gsub('/%w*_test.go', '')
+  return normalized_id
+end
+
+--- Extracts testfile and linenumber of go test output in format
+--- "    main_test.go:12: ErrorF\n"
+---@param line string
+---@return string, number
+local function get_testfileinfo(line)
   local file, linenumber = string.match(line, '%s%s%s%s(.*_test.go):(%d+):')
   return file, linenumber
 end
@@ -150,7 +169,7 @@ local function marshal_gotest_output(lines)
       if test then
         local status = test_statuses[action]
 
-        local testname, parenttestname = generate_testname(package, test)
+        local testname, parenttestname = normalize_testname(package, test)
         if not tests[testname] then
           tests[testname] = {
             output = {},
@@ -158,7 +177,7 @@ local function marshal_gotest_output(lines)
             file_output = {},
           }
         end
-        local new_testfile, new_linenumber = get_testfile(parsed.Output)
+        local new_testfile, new_linenumber = get_testfileinfo(parsed.Output)
         if new_testfile then
           testfile = new_testfile
           linenumber = new_linenumber
@@ -346,13 +365,16 @@ function adapter.results(spec, result, tree)
   logger.debug('                            with result: ' .. vim.inspect(result))
   logger.debug('                            with tree: ' .. vim.inspect(tree))
 
-  local go_module = get_go_module_name(spec.context.file)
+  local go_root = get_go_root(spec.context.file)
+  local go_module = get_go_module_name(go_root)
   if not go_module then
     return {}
   end
+  logger.debug('using go_module ' .. go_module)
 
   local success, lines = pcall(lib.files.read_lines, result.output)
   if not success then
+    logger.error('could not read output: ' .. lines)
     return {}
   end
   -- logger.debug('neotest-go output file read: ' .. vim.inspect(data))
@@ -374,16 +396,10 @@ function adapter.results(spec, result, tree)
         output = empty_result_fname,
       }
     else
-      local id_parts = vim.split(value.id, '::')
-      table.remove(id_parts, 1)
-      local test_output = tests[table.concat(id_parts, '/')]
+      local normalized_id = normalize_id(value.id, go_root, go_module)
+      local test_output = tests[normalized_id]
       logger.debug(
-        'test result (test_output) of value.id '
-          .. value.id
-          .. ' / test '
-          .. table.concat(id_parts, '/')
-          .. ': '
-          .. vim.inspect(test_output)
+        'test result (test_output) of value.id ' .. value.id .. ': ' .. vim.inspect(test_output)
       )
       if test_output then
         local fname = async.fn.tempname()
