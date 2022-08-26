@@ -185,7 +185,7 @@ local function marshal_gotest_output(lines)
           testfile = new_testfile
           linenumber = new_linenumber
         end
-        if testfile then
+        if testfile and linenumber then
           if not tests[testname].file_output[testfile] then
             tests[testname].file_output[testfile] = {}
           end
@@ -195,12 +195,12 @@ local function marshal_gotest_output(lines)
           table.insert(tests[testname].file_output[testfile][linenumber], output)
         end
 
-        table.insert(tests[test].progress, action)
+        table.insert(tests[testname].progress, action)
         if status then
-          tests[test].status = status
+          tests[testname].status = status
         end
         if output then
-          table.insert(tests[test].output, output)
+          table.insert(tests[testname].output, output)
           if parenttestname then
             table.insert(tests[parenttestname].output, output)
           end
@@ -370,7 +370,7 @@ function adapter.results(spec, result, tree)
 
   local go_root = get_go_root(spec.context.file)
   local go_module = get_go_module_name(go_root)
-  if not go_module then
+  if not go_root or not go_module then
     return {}
   end
   logger.debug('using go_module ' .. go_module)
