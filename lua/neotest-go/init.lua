@@ -139,16 +139,29 @@ local function get_filename_from_id(id)
   return filename
 end
 
+local testfile_pattern = '%s%s%s%s(.*_test.go):(%d+):'
 --- Extracts testfile and linenumber of go test output in format
 --- "    main_test.go:12: ErrorF\n"
 ---@param line string
 ---@return string?, number?
 local function get_testfileinfo(line)
   if line then
-    local file, linenumber = string.match(line, '%s%s%s%s(.*_test.go):(%d+):')
+    local file, linenumber = string.match(line, testfile_pattern)
     return file, tonumber(linenumber)
   end
   return nil, nil
+end
+
+--- Removes testfile and linenumber of go test output in format
+--- "    main_test.go:12: ErrorF\n"
+---@param line string
+---@return string?, number?
+local function remove_testfileinfo(line)
+  if line then
+    line = string.gsub(line, testfile_pattern .. ' ', '')
+    return line
+  end
+  return nil
 end
 
 local function get_errors_from_test(test, file_name)
@@ -157,7 +170,7 @@ local function get_errors_from_test(test, file_name)
   end
   local errors = {}
   for line, output in pairs(test.file_output[file_name]) do
-    table.insert(errors, { line = line, message = table.concat(output, '') })
+    table.insert(errors, { line = line - 1, message = table.concat(output, '') })
   end
   return errors
 end
@@ -208,7 +221,10 @@ local function marshal_gotest_output(lines)
           if not tests[testname].file_output[testfile][linenumber] then
             tests[testname].file_output[testfile][linenumber] = {}
           end
-          table.insert(tests[testname].file_output[testfile][linenumber], output)
+          table.insert(
+            tests[testname].file_output[testfile][linenumber],
+            remove_testfileinfo(parsed.Output)
+          )
         end
 
         table.insert(tests[testname].progress, action)
