@@ -33,9 +33,10 @@ local function sanitize_output(output)
   output = output
     :gsub(testfile_pattern, '')
     :gsub(testlog_pattern, '')
-    :gsub('\n', '')
+    :gsub('\n', ' ')
     :gsub('\t', ' ')
     :gsub('%s+', ' ')
+    :gsub('^%s+', '')
   return output
 end
 
