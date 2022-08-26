@@ -134,6 +134,11 @@ local function normalize_id(id, go_root, go_module)
   return normalized_id
 end
 
+local function get_filename_from_id(id)
+  local filename = string.match(id, '/(%w*_test.go)::')
+  return filename
+end
+
 --- Extracts testfile and linenumber of go test output in format
 --- "    main_test.go:12: ErrorF\n"
 ---@param line string
@@ -144,6 +149,16 @@ local function get_testfileinfo(line)
     return file, linenumber
   end
   return nil, nil
+end
+
+local function get_errors_from_test(test, file_name)
+  if not test.file_output[file_name] then
+    return nil
+  end
+  local errors = {}
+  for line, output in ipairs(test.file_output[file_name]) do
+    table.insert(errors, { line = line, message = table.concat(output, '') })
+  end
 end
 
 ---Convert the json output from `gotest` to an intermediate format more similar to
@@ -400,18 +415,20 @@ function adapter.results(spec, result, tree)
       }
     else
       local normalized_id = normalize_id(value.id, go_root, go_module)
-      local test_output = tests[normalized_id]
-      logger.debug(
-        'test result (test_output) of value.id ' .. value.id .. ': ' .. vim.inspect(test_output)
-      )
-      if test_output then
+      local test_result = tests[normalized_id]
+      logger.debug('test result of value.id ' .. value.id .. ': ' .. vim.inspect(test_result))
+      if test_result then
         local fname = async.fn.tempname()
-        fn.writefile(test_output.output, fname)
+        fn.writefile(test_result.output, fname)
         results[value.id] = {
-          status = test_output.status,
-          short = table.concat(test_output.output, '\n'),
+          status = test_result.status,
+          short = table.concat(test_result.output, '\n'),
           output = fname,
         }
+        local errors = get_errors_from_test(test_result, get_filename_from_id(value.id))
+        if errors then
+          results[value.id].errors = errors
+        end
       end
     end
   end
