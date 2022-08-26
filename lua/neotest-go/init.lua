@@ -137,10 +137,13 @@ end
 --- Extracts testfile and linenumber of go test output in format
 --- "    main_test.go:12: ErrorF\n"
 ---@param line string
----@return string, number
+---@return string?, number?
 local function get_testfileinfo(line)
-  local file, linenumber = string.match(line, '%s%s%s%s(.*_test.go):(%d+):')
-  return file, linenumber
+  if line then
+    local file, linenumber = string.match(line, '%s%s%s%s(.*_test.go):(%d+):')
+    return file, linenumber
+  end
+  return nil, nil
 end
 
 ---Convert the json output from `gotest` to an intermediate format more similar to
