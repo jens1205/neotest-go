@@ -29,7 +29,12 @@ local function sanitize_output(output)
   if not output then
     return nil
   end
-  output = output:gsub(testfile_pattern, ''):gsub(testlog_pattern, ''):gsub('\n', ''):gsub('\t', '')
+  output = output
+    :gsub(testfile_pattern, '')
+    :gsub(testlog_pattern, '')
+    :gsub('\n', '')
+    :gsub('\t', ' ')
+    :gsub('%s+', ' ')
   return output
 end
 
