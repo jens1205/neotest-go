@@ -92,7 +92,7 @@ end
 
 local function get_go_module_name(go_root)
   local gomod_file = go_root .. '/go.mod'
-  logger.debug('go.mod-file: ' .. gomod_file)
+  -- logger.debug('go.mod-file: ' .. gomod_file)
   local gomod_success, gomodule = pcall(lib.files.read_lines, gomod_file)
   if not gomod_success then
     logger.error("couldn't read go.mod file: " .. gomodule)
@@ -235,6 +235,9 @@ local function marshal_gotest_output(lines)
         if new_testfile and new_linenumber then
           testfile = new_testfile
           linenumber = new_linenumber
+          logger.debug(
+            'marshal_gotest_output: testfile ' .. testfile .. ':' .. linenumber .. ' detected'
+          )
           tests[testname].file_output[testfile] = {}
           tests[testname].file_output[testfile][linenumber] = {
             sanitize_output(parsed.Output),
@@ -243,6 +246,14 @@ local function marshal_gotest_output(lines)
 
         -- if we are in the context of a file, collect the logged data
         if testfile and linenumber and is_test_logoutput(parsed.Output) then
+          logger.debug(
+            'marshal_gotest_output: add '
+              .. parsed.Output
+              .. ' to '
+              .. testfile
+              .. ':'
+              .. linenumber
+          )
           table.insert(
             tests[testname].file_output[testfile][linenumber],
             sanitize_output(parsed.Output)
@@ -418,16 +429,16 @@ end
 ---@param tree neotest.Tree
 ---@return table<string, neotest.Result[]>
 function adapter.results(spec, result, tree)
-  logger.debug('neotest-go.results() called with spec: ' .. vim.inspect(spec))
-  logger.debug('                            with result: ' .. vim.inspect(result))
-  logger.debug('                            with tree: ' .. vim.inspect(tree))
+  -- logger.debug('neotest-go.results() called with spec: ' .. vim.inspect(spec))
+  -- logger.debug('                            with result: ' .. vim.inspect(result))
+  -- logger.debug('                            with tree: ' .. vim.inspect(tree))
 
   local go_root = get_go_root(spec.context.file)
   local go_module = get_go_module_name(go_root)
   if not go_root or not go_module then
     return {}
   end
-  logger.debug('using go_module ' .. go_module)
+  -- logger.debug('using go_module ' .. go_module)
 
   local success, lines = pcall(lib.files.read_lines, result.output)
   if not success then
@@ -464,7 +475,7 @@ function adapter.results(spec, result, tree)
           short = table.concat(test_result.output, '\n'),
           output = fname,
         }
-        logger.debug('get_filename_from_id: ' .. get_filename_from_id(value.id))
+        -- logger.debug('get_filename_from_id: ' .. get_filename_from_id(value.id))
         local errors = get_errors_from_test(test_result, get_filename_from_id(value.id))
         logger.debug('errors: ' .. vim.inspect(errors))
         if errors then
