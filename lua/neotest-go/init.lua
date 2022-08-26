@@ -20,13 +20,14 @@ local test_statuses = {
 }
 
 --- Remove newlines from test output
----@param output string
----@return string
+---@param output string?
+---@return string?
 local function sanitize_output(output)
   if not output then
-    return output
+    return nil
   end
-  return output:gsub('\n', ''):gsub('\t', '')
+  output = output:gsub('\n', ''):gsub('\t', ''):gsub('%s+', ' ')
+  return output
 end
 
 local function highlight_output(output)
@@ -154,8 +155,8 @@ end
 
 --- Removes testfile and linenumber of go test output in format
 --- "    main_test.go:12: ErrorF\n"
----@param line string
----@return string?, number?
+---@param line string?
+---@return string?
 local function remove_testfileinfo(line)
   if line then
     line = string.gsub(line, testfile_pattern .. ' ', '')
@@ -223,7 +224,7 @@ local function marshal_gotest_output(lines)
           end
           table.insert(
             tests[testname].file_output[testfile][linenumber],
-            remove_testfileinfo(parsed.Output)
+            sanitize_output(remove_testfileinfo(parsed.Output))
           )
         end
 
