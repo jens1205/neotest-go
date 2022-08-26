@@ -425,13 +425,16 @@ function adapter.results(spec, result, tree)
           short = table.concat(test_result.output, '\n'),
           output = fname,
         }
+        logger.debug('get_filename_from_id: ' .. get_filename_from_id(value.id))
         local errors = get_errors_from_test(test_result, get_filename_from_id(value.id))
+        logger.debug('errors: ' .. vim.inspect(errors))
         if errors then
           results[value.id].errors = errors
         end
       end
     end
   end
+  logger.debug('returning results: ' .. vim.inspect(results))
   return results
 end
 
