@@ -165,9 +165,9 @@ local function remove_testfileinfo(line)
   return nil
 end
 
-local function is_test_endline(line)
+local function is_test_seperatorline(line)
   if line then
-    if string.match(line, '^---.*') then
+    if string.match(line, '^---.*') or string.match(line, '^===.*') then
       return true
     end
   end
@@ -203,7 +203,7 @@ local function marshal_gotest_output(lines)
         end, lines)
         return tests, log
       end
-      local output = highlight_output(sanitize_output(parsed.Output))
+      local output = highlight_output(parsed.Output)
       if output then
         table.insert(log, output)
       end
@@ -231,7 +231,7 @@ local function marshal_gotest_output(lines)
           if not tests[testname].file_output[testfile][linenumber] then
             tests[testname].file_output[testfile][linenumber] = {}
           end
-          if not is_test_endline(parsed.Output) then
+          if not is_test_seperatorline(parsed.Output) then
             table.insert(
               tests[testname].file_output[testfile][linenumber],
               sanitize_output(remove_testfileinfo(parsed.Output))
