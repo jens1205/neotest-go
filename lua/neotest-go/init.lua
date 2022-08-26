@@ -156,7 +156,7 @@ local function get_errors_from_test(test, file_name)
     return nil
   end
   local errors = {}
-  for line, output in ipairs(test.file_output[file_name]) do
+  for line, output in pairs(test.file_output[file_name]) do
     table.insert(errors, { line = line, message = table.concat(output, '') })
   end
   return errors
