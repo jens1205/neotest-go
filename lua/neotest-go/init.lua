@@ -93,16 +93,21 @@ local function get_go_package_name(_)
   return vim.startswith('package', line) and vim.split(line, ' ')[2] or ''
 end
 
+--- gets the root directory of the go project
+---@param start_file string
+---@return string?
 local function get_go_root(start_file)
   return lib.files.match_root_pattern('go.mod')(start_file)
 end
 
+--- gets the go module name
+---@param go_root string
+---@return string?
 local function get_go_module_name(go_root)
   local gomod_file = go_root .. '/go.mod'
-  -- logger.debug('go.mod-file: ' .. gomod_file)
   local gomod_success, gomodule = pcall(lib.files.read_lines, gomod_file)
   if not gomod_success then
-    logger.error("couldn't read go.mod file: " .. gomodule)
+    logger.error("neotest-go: couldn't read go.mod file: " .. gomodule)
     return
   end
   local line = gomodule[1]
@@ -122,7 +127,7 @@ end
 
 --- Converts from a given go package and the "/" seperated testname to a
 --- format "package::test::subtest".
---- The function returns the test in this format as well as the testname of the parent test (if present)
+--- Returns the test in this format as well as the testname of the parent test (if present)
 ---@param package string
 ---@param test string
 ---@return string, string?
@@ -145,13 +150,16 @@ local function normalize_id(id, go_root, go_module)
   return normalized_id
 end
 
+--- Extracts the file name from a neotest id
+---@param id string
+---@return string
 local function get_filename_from_id(id)
   local filename = string.match(id, '/(%w*_test.go)::')
   return filename
 end
 
 --- Extracts testfile and linenumber of go test output in format
---- "    main_test.go:12: ErrorF\n"
+--- "    main_test.go:12: Some error message\n"
 ---@param line string
 ---@return string?, number?
 local function get_testfileinfo(line)
@@ -188,7 +196,7 @@ local function get_errors_from_test(test, file_name)
   local errors = {}
   for line, output in pairs(test.file_output[file_name]) do
     if is_error(output) then
-      table.insert(errors, { line = line - 1, message = 'neotest: ' .. table.concat(output, '') })
+      table.insert(errors, { line = line - 1, message = 'go test: ' .. table.concat(output, '') })
     end
   end
   return errors
@@ -237,9 +245,6 @@ local function marshal_gotest_output(lines)
         if new_testfile and new_linenumber then
           testfile = new_testfile
           linenumber = new_linenumber
-          logger.debug(
-            'marshal_gotest_output: testfile ' .. testfile .. ':' .. linenumber .. ' detected'
-          )
           if not tests[testname].file_output[testfile] then
             tests[testname].file_output[testfile] = {}
           end
@@ -250,14 +255,6 @@ local function marshal_gotest_output(lines)
 
         -- if we are in the context of a file, collect the logged data
         if testfile and linenumber and is_test_logoutput(parsed.Output) then
-          logger.debug(
-            'marshal_gotest_output: add '
-              .. parsed.Output
-              .. ' to '
-              .. testfile
-              .. ':'
-              .. linenumber
-          )
           table.insert(
             tests[testname].file_output[testfile][linenumber],
             sanitize_output(parsed.Output)
@@ -433,26 +430,22 @@ end
 ---@param tree neotest.Tree
 ---@return table<string, neotest.Result[]>
 function adapter.results(spec, result, tree)
-  -- logger.debug('neotest-go.results() called with spec: ' .. vim.inspect(spec))
-  -- logger.debug('                            with result: ' .. vim.inspect(result))
-  -- logger.debug('                            with tree: ' .. vim.inspect(tree))
-
   local go_root = get_go_root(spec.context.file)
-  local go_module = get_go_module_name(go_root)
-  if not go_root or not go_module then
+  if not go_root then
     return {}
   end
-  -- logger.debug('using go_module ' .. go_module)
+  local go_module = get_go_module_name(go_root)
+  if not go_module then
+    return {}
+  end
 
   local success, lines = pcall(lib.files.read_lines, result.output)
   if not success then
-    logger.error('could not read output: ' .. lines)
+    logger.error('neotest-go: could not read output: ' .. lines)
     return {}
   end
-  -- logger.debug('neotest-go output file read: ' .. vim.inspect(data))
-  -- local lines = vim.split(data, '\r\n')
+
   local tests, log = marshal_gotest_output(lines)
-  logger.debug('marshalled gotest output: ' .. vim.inspect(tests))
   local results = {}
   local no_results = vim.tbl_isempty(tests)
   local empty_result_fname
@@ -470,7 +463,6 @@ function adapter.results(spec, result, tree)
     else
       local normalized_id = normalize_id(value.id, go_root, go_module)
       local test_result = tests[normalized_id]
-      logger.debug('test result of value.id ' .. value.id .. ': ' .. vim.inspect(test_result))
       if test_result then
         local fname = async.fn.tempname()
         fn.writefile(test_result.output, fname)
@@ -479,16 +471,13 @@ function adapter.results(spec, result, tree)
           short = table.concat(test_result.output, ''),
           output = fname,
         }
-        -- logger.debug('get_filename_from_id: ' .. get_filename_from_id(value.id))
         local errors = get_errors_from_test(test_result, get_filename_from_id(value.id))
-        logger.debug('errors: ' .. vim.inspect(errors))
         if errors then
           results[value.id].errors = errors
         end
       end
     end
   end
-  logger.debug('returning results: ' .. vim.inspect(results))
   return results
 end
 
