@@ -476,7 +476,7 @@ function adapter.results(spec, result, tree)
         fn.writefile(test_result.output, fname)
         results[value.id] = {
           status = test_result.status,
-          short = table.concat(test_result.output, '\n'),
+          short = table.concat(test_result.output, ''),
           output = fname,
         }
         -- logger.debug('get_filename_from_id: ' .. get_filename_from_id(value.id))
