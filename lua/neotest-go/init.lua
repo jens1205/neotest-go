@@ -33,10 +33,6 @@ local function sanitize_output(output)
     return nil
   end
   output = output:gsub(testfile_pattern, ''):gsub(testlog_pattern, '')
-  -- :gsub('\n', ' ')
-  -- :gsub('\t', ' ')
-  -- :gsub('%s+', ' ')
-  -- :gsub('^%s+', '')
   return output
 end
 
@@ -247,10 +243,15 @@ local function marshal_gotest_output(lines)
           linenumber = new_linenumber
           if not tests[testname].file_output[testfile] then
             tests[testname].file_output[testfile] = {}
+            tests[testname].file_output[testfile][linenumber] = {}
           end
-          tests[testname].file_output[testfile][linenumber] = {
-            sanitize_output(parsed.Output),
-          }
+          local sanitized_output = sanitize_output(parsed.Output)
+          -- In our first error line we don't want empty lines (testify logs start with empty line (\n))
+          if sanitized_output and not sanitized_output:match('^%s*$') then
+            tests[testname].file_output[testfile][linenumber] = {
+              sanitize_output(parsed.Output),
+            }
+          end
         end
 
         -- if we are in the context of a file, collect the logged data
