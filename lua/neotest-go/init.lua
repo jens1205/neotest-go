@@ -186,6 +186,7 @@ local function is_test_logoutput(line)
 end
 
 local function get_errors_from_test(test, file_name)
+  logger.debug('get_errors_from_test: ', vim.inspect(test))
   if not test.file_output[file_name] then
     return nil
   end
@@ -195,6 +196,7 @@ local function get_errors_from_test(test, file_name)
       table.insert(errors, { line = line - 1, message = table.concat(output, '') })
     end
   end
+  logger.debug('returning ' .. vim.inspect(errors))
   return errors
 end
 
