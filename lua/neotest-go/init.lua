@@ -23,20 +23,20 @@ local testfile_pattern = '^%s%s%s%s(.*_test.go):(%d+): '
 local testlog_pattern = '^%s%s%s%s%s%s%s%s'
 local error_pattern = { 'error' }
 
---- Remove newlines from test output
+--- Removes `go test` specific prefixes
+--- For removing newlines / tabs / whitespaces to beautify diagnostic,
+--- vim.diagnostic.config(virtual_text.format) should be used
 ---@param output string?
 ---@return string?
 local function sanitize_output(output)
   if not output then
     return nil
   end
-  output = output
-    :gsub(testfile_pattern, '')
-    :gsub(testlog_pattern, '')
-    :gsub('\n', ' ')
-    :gsub('\t', ' ')
-    :gsub('%s+', ' ')
-    :gsub('^%s+', '')
+  output = output:gsub(testfile_pattern, ''):gsub(testlog_pattern, '')
+  -- :gsub('\n', ' ')
+  -- :gsub('\t', ' ')
+  -- :gsub('%s+', ' ')
+  -- :gsub('^%s+', '')
   return output
 end
 
