@@ -243,14 +243,16 @@ local function marshal_gotest_output(lines)
           linenumber = new_linenumber
           if not tests[testname].file_output[testfile] then
             tests[testname].file_output[testfile] = {}
-            tests[testname].file_output[testfile][linenumber] = {}
           end
-          local sanitized_output = sanitize_output(parsed.Output)
+
           -- In our first error line we don't want empty lines (testify logs start with empty line (\n))
+          local sanitized_output = sanitize_output(parsed.Output)
           if sanitized_output and not sanitized_output:match('^%s*$') then
             tests[testname].file_output[testfile][linenumber] = {
               sanitize_output(parsed.Output),
             }
+          else
+            tests[testname].file_output[testfile][linenumber] = {}
           end
         end
 
