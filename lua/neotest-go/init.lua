@@ -483,6 +483,7 @@ function adapter.results(spec, result, tree)
       end
     end
   end
+  logger.debug('neotest-go results: ' .. vim.inspect(results))
   return results
 end
 
