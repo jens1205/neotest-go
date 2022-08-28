@@ -196,7 +196,7 @@ local function get_errors_from_test(test, file_name)
   local errors = {}
   for line, output in pairs(test.file_output[file_name]) do
     if is_error(output) then
-      table.insert(errors, { line = line - 1, message = 'go test: ' .. table.concat(output, '') })
+      table.insert(errors, { line = line - 1, message = table.concat(output, '') })
     end
   end
   return errors
