@@ -212,6 +212,9 @@ end
 ---@return table, table
 local function marshal_gotest_output(lines)
   local tests = {}
+  tests['root'] = {
+    output = {},
+  }
   local log = {}
   local testfile, linenumber
   for _, line in ipairs(lines) do
@@ -280,6 +283,7 @@ local function marshal_gotest_output(lines)
           if parenttestname then
             table.insert(tests[parenttestname].output, output)
           end
+          table.insert(tests['root'].output, output)
         end
       end
     end
@@ -489,8 +493,11 @@ function adapter.results(spec, result, tree)
       end
     end
   end
+  local fname = async.fn.tempname()
+  fn.writefile(tests['root'].output, fname)
   results['root'] = {
-    output = result.output,
+    short = table.concat(tests['root'].output, ''),
+    output = fname,
   }
   return results
 end
