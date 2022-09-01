@@ -489,6 +489,9 @@ function adapter.results(spec, result, tree)
       end
     end
   end
+  results['root'] = {
+    output = result.output,
+  }
   return results
 end
 
